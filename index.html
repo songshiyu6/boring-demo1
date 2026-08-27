@@ -1,0 +1,586 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#090b10" />
+  <title>Tiny Universe — 一页宇宙</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #090b10;
+      --panel: rgba(15, 18, 27, 0.68);
+      --panel-border: rgba(255, 255, 255, 0.1);
+      --text: #f4f7ff;
+      --muted: #98a2b7;
+      --accent: #8aa4ff;
+      --accent-2: #d7a3ff;
+      --danger: #ff7a90;
+      --shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
+    }
+
+    * { box-sizing: border-box; }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+        "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    }
+
+    body {
+      background:
+        radial-gradient(circle at 12% 12%, rgba(98, 121, 255, 0.14), transparent 28%),
+        radial-gradient(circle at 82% 18%, rgba(196, 116, 255, 0.11), transparent 25%),
+        radial-gradient(circle at 52% 88%, rgba(64, 206, 196, 0.08), transparent 28%),
+        var(--bg);
+    }
+
+    canvas {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      cursor: crosshair;
+    }
+
+    .topbar {
+      position: fixed;
+      z-index: 3;
+      top: 22px;
+      left: 22px;
+      right: 22px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      pointer-events: none;
+    }
+
+    .brand,
+    .controls,
+    .hint,
+    .toast {
+      backdrop-filter: blur(18px) saturate(140%);
+      -webkit-backdrop-filter: blur(18px) saturate(140%);
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
+      box-shadow: var(--shadow);
+    }
+
+    .brand {
+      border-radius: 18px;
+      padding: 14px 16px;
+      max-width: min(430px, calc(100vw - 44px));
+    }
+
+    .eyebrow {
+      color: var(--muted);
+      font-size: 11px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      margin-bottom: 5px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(20px, 2.4vw, 30px);
+      letter-spacing: -0.04em;
+      line-height: 1.05;
+    }
+
+    .subtitle {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .controls {
+      pointer-events: auto;
+      display: flex;
+      gap: 8px;
+      padding: 8px;
+      border-radius: 15px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    button {
+      appearance: none;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.055);
+      color: var(--text);
+      border-radius: 10px;
+      padding: 9px 11px;
+      font: inherit;
+      font-size: 12px;
+      cursor: pointer;
+      transition: 160ms ease;
+    }
+
+    button:hover {
+      background: rgba(255, 255, 255, 0.11);
+      transform: translateY(-1px);
+    }
+
+    button:active { transform: translateY(0); }
+
+    button.primary {
+      color: #0b0e16;
+      border-color: transparent;
+      background: linear-gradient(135deg, #b9c8ff, #d9aeff);
+      font-weight: 700;
+    }
+
+    button.danger { color: #ffb1be; }
+
+    .hud {
+      position: fixed;
+      z-index: 3;
+      left: 22px;
+      bottom: 22px;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(84px, 1fr));
+      gap: 8px;
+      pointer-events: none;
+    }
+
+    .stat {
+      min-width: 92px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      background: rgba(9, 12, 18, 0.52);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(12px);
+    }
+
+    .stat-label {
+      display: block;
+      color: var(--muted);
+      font-size: 10px;
+      margin-bottom: 3px;
+    }
+
+    .stat-value {
+      font-size: 15px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .hint {
+      position: fixed;
+      z-index: 3;
+      right: 22px;
+      bottom: 22px;
+      max-width: 320px;
+      border-radius: 14px;
+      padding: 11px 13px;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.55;
+      pointer-events: none;
+    }
+
+    kbd {
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-bottom-color: rgba(255, 255, 255, 0.18);
+      border-radius: 5px;
+      padding: 1px 5px;
+      font: inherit;
+      font-size: 10px;
+    }
+
+    .toast {
+      position: fixed;
+      z-index: 5;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -44%) scale(0.96);
+      border-radius: 18px;
+      padding: 15px 18px;
+      text-align: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: 240ms ease;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+    }
+
+    .toast strong { display: block; font-size: 16px; margin-bottom: 3px; }
+    .toast span { color: var(--muted); font-size: 11px; }
+
+    @media (max-width: 760px) {
+      .topbar { flex-direction: column; }
+      .controls { justify-content: flex-start; }
+      .hint { display: none; }
+      .hud { right: 22px; grid-template-columns: repeat(3, 1fr); }
+      .stat { min-width: 0; }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="space" aria-label="Interactive particle universe"></canvas>
+
+  <div class="topbar">
+    <section class="brand">
+      <div class="eyebrow">boring-demo1 / experiment 001</div>
+      <h1>Tiny Universe.</h1>
+      <div class="subtitle">
+        一个没有依赖、没有构建步骤、只有引力和一点点失控的浏览器宇宙。<br />
+        点击制造星尘，按住鼠标创造引力井。
+      </div>
+    </section>
+
+    <div class="controls">
+      <button id="burst" class="primary">✦ 星尘爆发</button>
+      <button id="pause">暂停</button>
+      <button id="mode">引力：吸引</button>
+      <button id="reset" class="danger">重置宇宙</button>
+    </div>
+  </div>
+
+  <div class="hud">
+    <div class="stat"><span class="stat-label">PARTICLES</span><span id="particleCount" class="stat-value">0</span></div>
+    <div class="stat"><span class="stat-label">FPS</span><span id="fps" class="stat-value">60</span></div>
+    <div class="stat"><span class="stat-label">AGE</span><span id="age" class="stat-value">0.0s</span></div>
+  </div>
+
+  <div class="hint">
+    <kbd>Click</kbd> 星尘 · <kbd>Hold</kbd> 引力井 · <kbd>Space</kbd> 暂停 ·
+    <kbd>G</kbd> 反转引力 · <kbd>R</kbd> 重置
+  </div>
+
+  <div id="toast" class="toast"><strong></strong><span></span></div>
+
+  <script>
+    (() => {
+      'use strict';
+
+      const canvas = document.getElementById('space');
+      const ctx = canvas.getContext('2d', { alpha: true });
+      const countEl = document.getElementById('particleCount');
+      const fpsEl = document.getElementById('fps');
+      const ageEl = document.getElementById('age');
+      const pauseBtn = document.getElementById('pause');
+      const modeBtn = document.getElementById('mode');
+      const toast = document.getElementById('toast');
+      const toastTitle = toast.querySelector('strong');
+      const toastText = toast.querySelector('span');
+
+      const TAU = Math.PI * 2;
+      const MAX_PARTICLES = 950;
+      const palette = [
+        [153, 180, 255],
+        [218, 164, 255],
+        [117, 225, 216],
+        [255, 186, 143],
+        [255, 129, 168],
+        [236, 241, 255],
+      ];
+
+      let width = 0;
+      let height = 0;
+      let dpr = 1;
+      let particles = [];
+      let paused = false;
+      let gravitySign = 1;
+      let universeAge = 0;
+      let last = performance.now();
+      let fpsSmooth = 60;
+      let mouse = { x: 0, y: 0, down: false, active: false };
+      let flashTimer;
+
+      function resize() {
+        dpr = Math.min(window.devicePixelRatio || 1, 2);
+        width = window.innerWidth;
+        height = window.innerHeight;
+        canvas.width = Math.round(width * dpr);
+        canvas.height = Math.round(height * dpr);
+        canvas.style.width = `${width}px`;
+        canvas.style.height = `${height}px`;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+
+      class Particle {
+        constructor(x, y, options = {}) {
+          const angle = options.angle ?? Math.random() * TAU;
+          const speed = options.speed ?? (0.15 + Math.random() * 1.45);
+          const color = palette[Math.floor(Math.random() * palette.length)];
+
+          this.x = x;
+          this.y = y;
+          this.px = x;
+          this.py = y;
+          this.vx = Math.cos(angle) * speed;
+          this.vy = Math.sin(angle) * speed;
+          this.r = options.radius ?? (0.65 + Math.random() * 1.9);
+          this.mass = 0.8 + this.r * 0.9;
+          this.life = options.life ?? (480 + Math.random() * 760);
+          this.maxLife = this.life;
+          this.rgb = color;
+          this.twinkle = Math.random() * TAU;
+        }
+
+        update(dt) {
+          this.px = this.x;
+          this.py = this.y;
+          this.twinkle += dt * 0.055;
+
+          if (mouse.active && mouse.down) {
+            const dx = mouse.x - this.x;
+            const dy = mouse.y - this.y;
+            const distSq = dx * dx + dy * dy + 140;
+            const dist = Math.sqrt(distSq);
+            const force = gravitySign * Math.min(0.24, 55 / distSq) * dt;
+            this.vx += (dx / dist) * force;
+            this.vy += (dy / dist) * force;
+          }
+
+          // A tiny central gravity keeps the system feeling coherent.
+          const cx = width * 0.5 - this.x;
+          const cy = height * 0.5 - this.y;
+          const centerDist = Math.sqrt(cx * cx + cy * cy) + 1;
+          const centerForce = 0.000012 * dt;
+          this.vx += (cx / centerDist) * centerForce;
+          this.vy += (cy / centerDist) * centerForce;
+
+          this.vx *= Math.pow(0.9992, dt);
+          this.vy *= Math.pow(0.9992, dt);
+          this.x += this.vx * dt;
+          this.y += this.vy * dt;
+          this.life -= dt;
+
+          const margin = 60;
+          if (this.x < -margin) this.x = width + margin;
+          if (this.x > width + margin) this.x = -margin;
+          if (this.y < -margin) this.y = height + margin;
+          if (this.y > height + margin) this.y = -margin;
+        }
+
+        draw() {
+          const alpha = Math.max(0, Math.min(1, this.life / Math.min(120, this.maxLife)));
+          const tailAlpha = alpha * 0.18;
+          const [r, g, b] = this.rgb;
+
+          ctx.beginPath();
+          ctx.moveTo(this.px, this.py);
+          ctx.lineTo(this.x, this.y);
+          ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${tailAlpha})`;
+          ctx.lineWidth = Math.max(0.5, this.r * 0.55);
+          ctx.stroke();
+
+          const glow = this.r * (2.3 + Math.sin(this.twinkle) * 0.45);
+          const gradient = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, glow * 3.2);
+          gradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${alpha})`);
+          gradient.addColorStop(0.23, `rgba(${r}, ${g}, ${b}, ${alpha * 0.48})`);
+          gradient.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
+          ctx.fillStyle = gradient;
+          ctx.beginPath();
+          ctx.arc(this.x, this.y, glow * 3.2, 0, TAU);
+          ctx.fill();
+        }
+      }
+
+      function addParticle(x, y, options) {
+        if (particles.length >= MAX_PARTICLES) particles.splice(0, particles.length - MAX_PARTICLES + 1);
+        particles.push(new Particle(x, y, options));
+      }
+
+      function burst(x = width * 0.5, y = height * 0.5, amount = 100, power = 3.2) {
+        for (let i = 0; i < amount; i++) {
+          const a = Math.random() * TAU;
+          const distance = Math.pow(Math.random(), 1.9) * 25;
+          addParticle(
+            x + Math.cos(a) * distance,
+            y + Math.sin(a) * distance,
+            {
+              angle: a + (Math.random() - 0.5) * 0.55,
+              speed: 0.35 + Math.pow(Math.random(), 0.7) * power,
+              radius: 0.6 + Math.random() * 2.1,
+            }
+          );
+        }
+      }
+
+      function seedUniverse() {
+        particles = [];
+        const arms = 4;
+        const total = Math.min(420, Math.max(180, Math.round((width * height) / 4200)));
+
+        for (let i = 0; i < total; i++) {
+          const t = i / total;
+          const arm = i % arms;
+          const radius = 25 + Math.pow(Math.random(), 0.64) * Math.min(width, height) * 0.38;
+          const spiral = radius * 0.018;
+          const angle = arm * TAU / arms + spiral + (Math.random() - 0.5) * 0.75;
+          const x = width * 0.5 + Math.cos(angle) * radius;
+          const y = height * 0.5 + Math.sin(angle) * radius * 0.62;
+          const tangent = angle + Math.PI / 2;
+          addParticle(x, y, {
+            angle: tangent + (Math.random() - 0.5) * 0.25,
+            speed: 0.18 + (1 - t) * 0.62,
+            life: 900 + Math.random() * 1300,
+          });
+        }
+
+        burst(width * 0.5, height * 0.5, 40, 1.2);
+        universeAge = 0;
+        flash('宇宙已重启', '这一次也不保证会更合理。');
+      }
+
+      function drawGravityWell() {
+        if (!mouse.active || !mouse.down) return;
+        const color = gravitySign > 0 ? '138, 164, 255' : '255, 122, 144';
+        const radius = 24 + Math.sin(performance.now() * 0.006) * 3;
+
+        const gradient = ctx.createRadialGradient(mouse.x, mouse.y, 0, mouse.x, mouse.y, 90);
+        gradient.addColorStop(0, `rgba(${color}, 0.16)`);
+        gradient.addColorStop(0.25, `rgba(${color}, 0.06)`);
+        gradient.addColorStop(1, `rgba(${color}, 0)`);
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(mouse.x, mouse.y, 90, 0, TAU);
+        ctx.fill();
+
+        ctx.strokeStyle = `rgba(${color}, 0.6)`;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(mouse.x, mouse.y, radius, 0, TAU);
+        ctx.stroke();
+      }
+
+      function renderBackground(now) {
+        ctx.clearRect(0, 0, width, height);
+
+        // Sparse stationary stars are generated deterministically from screen-space math.
+        ctx.fillStyle = 'rgba(255,255,255,0.16)';
+        const spacing = 73;
+        const offset = (now * 0.002) % spacing;
+        for (let y = 18; y < height; y += spacing) {
+          for (let x = 23; x < width; x += spacing) {
+            const jitterX = Math.sin(x * 12.9898 + y * 78.233) * 17;
+            const jitterY = Math.cos(x * 4.1414 + y * 19.19) * 13;
+            const px = (x + jitterX + offset) % (width + spacing) - spacing;
+            const py = y + jitterY;
+            ctx.fillRect(px, py, 0.7, 0.7);
+          }
+        }
+      }
+
+      function tick(now) {
+        const rawDt = Math.min(32, now - last);
+        const dt = rawDt / 16.6667;
+        last = now;
+
+        fpsSmooth += ((1000 / Math.max(rawDt, 1)) - fpsSmooth) * 0.08;
+        renderBackground(now);
+
+        if (!paused) {
+          universeAge += rawDt / 1000;
+
+          for (let i = particles.length - 1; i >= 0; i--) {
+            const p = particles[i];
+            p.update(dt);
+            if (p.life <= 0) particles.splice(i, 1);
+          }
+
+          // Keep the universe alive when old particles naturally fade out.
+          if (particles.length < 120 && Math.random() < 0.05) {
+            addParticle(width * Math.random(), height * Math.random(), { speed: 0.25 });
+          }
+        }
+
+        ctx.globalCompositeOperation = 'lighter';
+        for (const p of particles) p.draw();
+        drawGravityWell();
+        ctx.globalCompositeOperation = 'source-over';
+
+        countEl.textContent = String(particles.length);
+        fpsEl.textContent = String(Math.round(fpsSmooth));
+        ageEl.textContent = `${universeAge.toFixed(1)}s`;
+
+        requestAnimationFrame(tick);
+      }
+
+      function flash(title, text) {
+        clearTimeout(flashTimer);
+        toastTitle.textContent = title;
+        toastText.textContent = text;
+        toast.classList.add('show');
+        flashTimer = setTimeout(() => toast.classList.remove('show'), 1350);
+      }
+
+      function togglePause() {
+        paused = !paused;
+        pauseBtn.textContent = paused ? '继续' : '暂停';
+        flash(paused ? '时间停止了' : '时间继续', paused ? '粒子：终于可以歇会儿。' : '粒子：好吧，继续上班。');
+      }
+
+      function toggleGravity() {
+        gravitySign *= -1;
+        modeBtn.textContent = gravitySign > 0 ? '引力：吸引' : '引力：排斥';
+        flash(gravitySign > 0 ? '普通引力' : '反重力', gravitySign > 0 ? '物理学暂时恢复正常。' : '牛顿正在输入中……');
+      }
+
+      canvas.addEventListener('pointerdown', (e) => {
+        canvas.setPointerCapture(e.pointerId);
+        mouse.down = true;
+        mouse.active = true;
+        mouse.x = e.clientX;
+        mouse.y = e.clientY;
+        burst(mouse.x, mouse.y, 34, 2.2);
+      });
+
+      canvas.addEventListener('pointermove', (e) => {
+        mouse.active = true;
+        mouse.x = e.clientX;
+        mouse.y = e.clientY;
+        if (mouse.down && Math.random() < 0.48) addParticle(mouse.x, mouse.y, { speed: 0.5, life: 260 });
+      });
+
+      canvas.addEventListener('pointerup', () => { mouse.down = false; });
+      canvas.addEventListener('pointercancel', () => { mouse.down = false; });
+      canvas.addEventListener('pointerleave', () => { if (!mouse.down) mouse.active = false; });
+
+      document.getElementById('burst').addEventListener('click', () => {
+        burst(width * (0.28 + Math.random() * 0.44), height * (0.28 + Math.random() * 0.44), 170, 4.6);
+        flash('恒星诞生', '+170 颗非常忙的粒子');
+      });
+      pauseBtn.addEventListener('click', togglePause);
+      modeBtn.addEventListener('click', toggleGravity);
+      document.getElementById('reset').addEventListener('click', seedUniverse);
+
+      window.addEventListener('keydown', (e) => {
+        if (e.code === 'Space') {
+          e.preventDefault();
+          togglePause();
+        } else if (e.key.toLowerCase() === 'g') {
+          toggleGravity();
+        } else if (e.key.toLowerCase() === 'r') {
+          seedUniverse();
+        } else if (e.key.toLowerCase() === 'b') {
+          burst(width * Math.random(), height * Math.random(), 120, 4);
+        }
+      });
+
+      window.addEventListener('resize', resize);
+      resize();
+      seedUniverse();
+      requestAnimationFrame((now) => {
+        last = now;
+        requestAnimationFrame(tick);
+      });
+    })();
+  </script>
+</body>
+</html>
